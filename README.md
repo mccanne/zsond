@@ -15,7 +15,7 @@ mkdir logs
 ./zsond :9999
 ```
 Then, point zeek's
-[http-over-zson plugin](https://github.com/looky-cloud/zson-http-plugin)
+[zson-http-plugin](https://github.com/looky-cloud/zson-http-plugin)
  at the server and run zeek.
 You should see zeek logs appear in the server directory.
 
