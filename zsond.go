@@ -87,6 +87,11 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	go func() {
+		for range time.Tick(time.Second) {
+			file.Sync()
+		}
+	}()
 	if _, err := io.Copy(file, reader); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
