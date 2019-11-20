@@ -81,7 +81,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 	file, _, err := openfile(dirPath, path)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if _, err := file.Write(header); err != nil {
