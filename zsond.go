@@ -85,7 +85,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := file.Write(header); err != nil {
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	go func() {
 		for range time.Tick(5 * time.Second) {
