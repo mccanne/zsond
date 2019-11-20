@@ -93,7 +93,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	if _, err := io.Copy(file, reader); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http. StatusInternalServerError)
 		return
 	}
 }
