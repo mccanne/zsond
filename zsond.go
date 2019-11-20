@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -21,19 +20,11 @@ func parsePath(path string) (string, error) {
 	return dirpath, nil
 }
 
-func findPath(buf []byte) string {
-	for len(buf) > 5 {
-		off := bytes.IndexByte(buf, byte('\n'))
-		if off < 0 {
-			return ""
-		}
-		line := string(buf[:off])
-		if strings.HasPrefix(line, "#path") {
-			return strings.TrimSpace(line[5:])
-		}
-		buf = buf[off+1:]
+func findPath(line string) (string, bool) {
+	if strings.HasPrefix(line, "#path") {
+		return strings.TrimSpace(line[5:]), true
 	}
-	return ""
+	return "", false
 }
 
 func openfile(path, name string) (*os.File, string, error) {
@@ -57,6 +48,20 @@ func openfile(path, name string) (*os.File, string, error) {
 	return nil, "", errors.New("too many files")
 }
 
+func readPath(reader *bufio.Reader) ([]byte, string, error) {
+	var buf []byte
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err != nil {
+			return nil, "", err
+		}
+		buf = append(buf, line...)
+		if path, ok := findPath(string(line)); ok {
+			return buf, path, nil
+		}
+	}
+}
+
 func handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "bad method", http.StatusForbidden)
@@ -67,37 +72,30 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
-	size := 128 * 1024
-	reader := bufio.NewReaderSize(r.Body, size)
-	buf, err := reader.Peek(size)
-	if err != nil && err != io.EOF {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
-	if len(buf) == 0 {
-		http.Error(w, "empty body", http.StatusForbidden)
-		return
-	}
-	logType := findPath(buf)
-	if logType == "" {
-		http.Error(w, "no #path directive found", http.StatusForbidden)
-		return
-	}
-	file, name, err := openfile(dirPath, logType)
+
+	reader := bufio.NewReader(r.Body)
+	header, path, err := readPath(reader)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	file, _, err := openfile(dirPath, path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if _, err := file.Write(header); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 	go func() {
-		for range time.Tick(time.Second) {
+		for range time.Tick(5 * time.Second) {
 			file.Sync()
 		}
 	}()
 	if _, err := io.Copy(file, reader); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http. StatusInternalServerError)
 		return
 	}
-	fmt.Printf("wrote %s\n", name)
 }
 
 func main() {
